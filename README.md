@@ -1,17 +1,17 @@
-# 🛡️ ParentalControlApp
+# 🛡️ ParentalControlApp (Pro Edition v2.0.0)
 
-A complete, production-grade 2-device Parental Control & Child Safety System inspired by enterprise parental management solutions. Built with Android (Kotlin, WebRTC, Foreground Services, Accessibility Engine) and a lightweight Node.js Real-Time Relay & Signaling Server.
+A commercial-grade, multi-device Parental Control & Child Safety System inspired by enterprise solutions (AirDroid Parental Control, Bark, Qustodio). Built with Android (Kotlin, WebRTC, Foreground Services, Accessibility Engine) and a lightweight Node.js Real-Time Relay & Signaling Server.
 
 ---
 
-## 📱 Direct Download Links (APK)
+## 📱 Direct Download Links (Pro Edition v2.0.0 APKs)
 
-Download the pre-compiled, signed APKs directly on your devices:
+Download the latest signed Pro APKs directly on your devices:
 
-- 👑 **[Download Parent Device APK (v1.0.0)](https://github.com/Pankajsh2011/ParentalControlApp/releases/download/v1.0.0/1_Parent_Device.apk)**
-- 🛡️ **[Download Child Device APK (v1.0.0)](https://github.com/Pankajsh2011/ParentalControlApp/releases/download/v1.0.0/2_Child_Device.apk)**
+- 👑 **[Download Parent Device Pro APK (v2.0.0)](https://github.com/Pankajsh2011/ParentalControlApp/releases/download/v2.0.0-pro/1_Parent_Device_Pro_v2.apk)**
+- 🛡️ **[Download Child Device Pro APK (v2.0.0)](https://github.com/Pankajsh2011/ParentalControlApp/releases/download/v2.0.0-pro/2_Child_Device_Pro_v2.apk)**
 
-Or visit the **[GitHub Releases Page](https://github.com/Pankajsh2011/ParentalControlApp/releases/tag/v1.0.0)**.
+Or visit the **[GitHub Releases Page (v2.0.0 Pro)](https://github.com/Pankajsh2011/ParentalControlApp/releases/tag/v2.0.0-pro)**.
 
 ---
 
