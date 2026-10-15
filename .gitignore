@@ -1,0 +1,17 @@
+# Gradle & Android build
+*.iml
+.gradle
+/local.properties
+/.idea/
+.DS_Store
+/build
+/app/build
+/captures
+.externalNativeBuild
+.cxx
+
+# Server Node.js
+server/node_modules/
+server/uploads/
+*.log
+server/.env
