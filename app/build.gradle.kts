@@ -9,10 +9,10 @@ android {
 
     defaultConfig {
         applicationId = "com.parental.control.app"
-        minSdk = 26
-        targetSdk = 34
-        versionCode = 2
-        versionName = "2.0.0"
+        minSdk = 24
+        targetSdk = 33
+        versionCode = 3
+        versionName = "2.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
