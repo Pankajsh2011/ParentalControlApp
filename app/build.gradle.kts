@@ -5,14 +5,14 @@ plugins {
 
 android {
     namespace = "com.parental.control.app"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.parental.control.app"
         minSdk = 24
         targetSdk = 33
-        versionCode = 3
-        versionName = "2.0.2"
+        versionCode = 4
+        versionName = "2.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
