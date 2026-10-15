@@ -82,10 +82,11 @@ class LocationGeofenceService : Service() {
         val lat = location.latitude
         val lng = location.longitude
         val accuracy = location.accuracy
-        Log.d(tag, "[GPS UPDATE] Lat: $lat | Lng: $lng | Accuracy: ${accuracy}m")
+        val speedKmh = if (location.hasSpeed()) location.speed * 3.6f else 0f
+        Log.d(tag, "[GPS UPDATE] Lat: $lat | Lng: $lng | Acc: ${accuracy}m | Speed: ${speedKmh.toInt()} km/h")
 
         // Broadcast to SyncHub for network transmission to Parent
-        com.parental.control.app.network.SyncHub.onLocationUpdated(lat, lng, accuracy)
+        com.parental.control.app.network.SyncHub.onLocationUpdated(lat, lng, accuracy, speedKmh)
     }
 
     override fun onDestroy() {

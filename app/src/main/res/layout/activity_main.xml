@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0B1120"
+    android:background="#090D16"
     android:padding="16dp">
 
     <LinearLayout
@@ -11,7 +11,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- App Header -->
+        <!-- Pro Header -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -28,17 +28,17 @@
                     android:id="@+id/txtAppTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Parental Control Hub"
+                    android:text="Parental Control Pro"
                     android:textColor="#38BDF8"
                     android:textSize="22sp"
                     android:textStyle="bold" />
 
                 <TextView
-                    android:id="@+id/txtAppSubtitle"
+                    android:id="@+id/txtDeviceModel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:text="All 6 Safety &amp; Device Protection Modules"
+                    android:text="Real-Time 6-Module Protection Shield"
                     android:textColor="#94A3B8"
                     android:textSize="12sp" />
             </LinearLayout>
@@ -63,9 +63,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            app:cardBackgroundColor="#1E293B"
-            app:cardCornerRadius="12dp"
-            app:strokeColor="#334155"
+            app:cardBackgroundColor="#131B2E"
+            app:cardCornerRadius="14dp"
+            app:strokeColor="#1E293B"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -77,9 +77,9 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="🌐 Cloud Server URL (Local Wi-Fi or Ngrok)"
+                    android:text="🌐 Cloud Server URL (Render / Ngrok / Wi-Fi)"
                     android:textColor="#94A3B8"
-                    android:textSize="13sp"
+                    android:textSize="12sp"
                     android:textStyle="bold" />
 
                 <LinearLayout
@@ -94,8 +94,8 @@
                         android:layout_width="0dp"
                         android:layout_height="44dp"
                         android:layout_weight="1"
-                        android:background="#0F172A"
-                        android:hint="http://192.168.1.41:5050"
+                        android:background="#090D16"
+                        android:hint="https://parental-control-server.onrender.com"
                         android:textColorHint="#475569"
                         android:textColor="#FFFFFF"
                         android:textSize="13sp"
@@ -116,7 +116,7 @@
         </com.google.android.material.card.MaterialCardView>
 
         <!-- ============================================== -->
-        <!-- PARENT CONTAINER (Shown when Role is Parent)   -->
+        <!-- PARENT DASHBOARD VIEW                          -->
         <!-- ============================================== -->
         <LinearLayout
             android:id="@+id/layoutParentDashboard"
@@ -125,34 +125,34 @@
             android:orientation="vertical"
             android:visibility="visible">
 
-            <!-- Child Status Summary -->
+            <!-- Telemetry & Battery Summary Card -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                app:cardBackgroundColor="#1E293B"
-                app:cardCornerRadius="12dp"
-                app:strokeColor="#334155"
+                app:cardBackgroundColor="#131B2E"
+                app:cardCornerRadius="14dp"
+                app:strokeColor="#1E293B"
                 app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="14dp">
+                    android:padding="16dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="📱 CHILD PHONE TELEMETRY"
+                        android:text="📱 CHILD DEVICE TELEMETRY"
                         android:textColor="#38BDF8"
-                        android:textSize="14sp"
+                        android:textSize="13sp"
                         android:textStyle="bold" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
+                        android:layout_marginTop="12dp"
                         android:orientation="horizontal">
 
                         <LinearLayout
@@ -172,7 +172,7 @@
                                 android:layout_height="wrap_content"
                                 android:text="--%"
                                 android:textColor="#FFFFFF"
-                                android:textSize="20sp"
+                                android:textSize="22sp"
                                 android:textStyle="bold" />
                         </LinearLayout>
 
@@ -193,7 +193,7 @@
                                 android:layout_height="wrap_content"
                                 android:text="--m"
                                 android:textColor="#EC4899"
-                                android:textSize="20sp"
+                                android:textSize="22sp"
                                 android:textStyle="bold" />
                         </LinearLayout>
 
@@ -205,7 +205,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Online Status"
+                                android:text="Child Status"
                                 android:textColor="#94A3B8"
                                 android:textSize="11sp" />
                             <TextView
@@ -214,88 +214,107 @@
                                 android:layout_height="wrap_content"
                                 android:text="Checking..."
                                 android:textColor="#F59E0B"
-                                android:textSize="14sp"
+                                android:textSize="15sp"
                                 android:textStyle="bold" />
                         </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Feature 4: Live GPS Location Card -->
+            <!-- Feature 4: Live GPS Location & Safe Zone Geofence -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                app:cardBackgroundColor="#1E293B"
-                app:cardCornerRadius="12dp"
-                app:strokeColor="#334155"
+                app:cardBackgroundColor="#131B2E"
+                app:cardCornerRadius="14dp"
+                app:strokeColor="#1E293B"
                 app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="14dp">
+                    android:padding="16dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="📍 4. LIVE GPS LOCATION &amp; GEOFENCE"
+                        android:text="📍 4. LIVE GPS LOCATION &amp; GEOFENCE SAFE ZONE"
                         android:textColor="#10B981"
-                        android:textSize="14sp"
+                        android:textSize="13sp"
                         android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/txtParentLocationCoords"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
+                        android:layout_marginTop="8dp"
                         android:text="Latitude: Waiting... | Longitude: Waiting..."
                         android:textColor="#FFFFFF"
-                        android:textSize="13sp" />
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/txtParentLocationTime"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="Last update: Never"
+                        android:text="Speed: 0 km/h | Accuracy: --m | Updated: Never"
                         android:textColor="#64748B"
                         android:textSize="11sp" />
 
-                    <Button
-                        android:id="@+id/btnOpenGoogleMaps"
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:backgroundTint="#059669"
-                        android:text="📍 View Child On Google Maps"
-                        android:textSize="13sp" />
+                        android:layout_marginTop="12dp"
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/btnOpenGoogleMaps"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="4dp"
+                            android:backgroundTint="#059669"
+                            android:text="📍 Google Maps"
+                            android:textSize="12sp" />
+
+                        <Button
+                            android:id="@+id/btnSetSafeZone"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="4dp"
+                            android:backgroundTint="#2563EB"
+                            android:text="🎯 Set Safe Zone"
+                            android:textSize="12sp" />
+                    </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Remote Controls (Alarm, Lock, Snapshot, WebRTC) -->
+            <!-- Pro Remote Control Center -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                app:cardBackgroundColor="#1E293B"
-                app:cardCornerRadius="12dp"
-                app:strokeColor="#334155"
+                app:cardBackgroundColor="#131B2E"
+                app:cardCornerRadius="14dp"
+                app:strokeColor="#1E293B"
                 app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="14dp">
+                    android:padding="16dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="⚡ REMOTE ACTIONS &amp; MONITORING"
+                        android:text="⚡ PRO REMOTE CONTROL CENTER"
                         android:textColor="#F59E0B"
-                        android:textSize="14sp"
+                        android:textSize="13sp"
                         android:textStyle="bold" />
 
                     <GridLayout
@@ -303,7 +322,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="10dp"
                         android:columnCount="2"
-                        android:rowCount="2">
+                        android:rowCount="3">
 
                         <Button
                             android:id="@+id/btnRingAlarm"
@@ -312,7 +331,17 @@
                             android:layout_columnWeight="1"
                             android:layout_marginEnd="4dp"
                             android:backgroundTint="#D97706"
-                            android:text="🔔 Ring Alarm"
+                            android:text="🔔 Ring Siren"
+                            android:textSize="12sp" />
+
+                        <Button
+                            android:id="@+id/btnStopAlarm"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_columnWeight="1"
+                            android:layout_marginStart="4dp"
+                            android:backgroundTint="#475569"
+                            android:text="🛑 Stop Alarm"
                             android:textSize="12sp" />
 
                         <Button
@@ -320,7 +349,8 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_columnWeight="1"
-                            android:layout_marginStart="4dp"
+                            android:layout_marginEnd="4dp"
+                            android:layout_marginTop="6dp"
                             android:backgroundTint="#DC2626"
                             android:text="🔒 Lock Phone"
                             android:textSize="12sp" />
@@ -330,10 +360,21 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_columnWeight="1"
-                            android:layout_marginEnd="4dp"
+                            android:layout_marginStart="4dp"
                             android:layout_marginTop="6dp"
                             android:backgroundTint="#7C3AED"
-                            android:text="📸 Remote Snap"
+                            android:text="📸 Screen Snap"
+                            android:textSize="12sp" />
+
+                        <Button
+                            android:id="@+id/btnToggleFlashlight"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_columnWeight="1"
+                            android:layout_marginEnd="4dp"
+                            android:layout_marginTop="6dp"
+                            android:backgroundTint="#0284C7"
+                            android:text="🔦 Flashlight"
                             android:textSize="12sp" />
 
                         <Button
@@ -343,35 +384,101 @@
                             android:layout_columnWeight="1"
                             android:layout_marginStart="4dp"
                             android:layout_marginTop="6dp"
-                            android:backgroundTint="#0284C7"
+                            android:backgroundTint="#0891B2"
                             android:text="🎙️ Live WebRTC"
                             android:textSize="12sp" />
                     </GridLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Feature 3: Communication & Intercepted SMS -->
+            <!-- Feature 6: Pro App Blocker -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                app:cardBackgroundColor="#1E293B"
-                app:cardCornerRadius="12dp"
-                app:strokeColor="#334155"
+                app:cardBackgroundColor="#131B2E"
+                app:cardCornerRadius="14dp"
+                app:strokeColor="#1E293B"
                 app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="14dp">
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🚫 6. PRO APP BLOCKER &amp; RESTRICTIONS"
+                        android:textColor="#EC4899"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/txtBlockedAppsList"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="#090D16"
+                        android:padding="10dp"
+                        android:text="Loading app restrictions..."
+                        android:textColor="#CBD5E1"
+                        android:textSize="12sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:orientation="horizontal">
+
+                        <EditText
+                            android:id="@+id/editBlockApp"
+                            android:layout_width="0dp"
+                            android:layout_height="42dp"
+                            android:layout_weight="1"
+                            android:background="#090D16"
+                            android:hint="Package name (e.g. com.zhiliaoapp.musically)"
+                            android:textColorHint="#475569"
+                            android:textColor="#FFFFFF"
+                            android:textSize="12sp"
+                            android:paddingStart="8dp"
+                            android:paddingEnd="8dp" />
+
+                        <Button
+                            android:id="@+id/btnToggleBlockApp"
+                            android:layout_width="wrap_content"
+                            android:layout_height="42dp"
+                            android:layout_marginStart="8dp"
+                            android:backgroundTint="#DC2626"
+                            android:text="Block / Toggle"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Feature 3: Intercepted Communication -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                app:cardBackgroundColor="#131B2E"
+                app:cardCornerRadius="14dp"
+                app:strokeColor="#1E293B"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="💬 3. COMMUNICATION &amp; SMS MONITOR"
                         android:textColor="#F43F5E"
-                        android:textSize="14sp"
+                        android:textSize="13sp"
                         android:textStyle="bold" />
 
                     <TextView
@@ -379,7 +486,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:background="#0F172A"
+                        android:background="#090D16"
                         android:padding="10dp"
                         android:text="No messages or calls intercepted yet..."
                         android:textColor="#CBD5E1"
@@ -387,29 +494,29 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Feature 5: AI Content Alerts -->
+            <!-- Feature 5: AI Safety Alerts -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 android:layout_marginBottom="24dp"
-                app:cardBackgroundColor="#1E293B"
-                app:cardCornerRadius="12dp"
-                app:strokeColor="#334155"
+                app:cardBackgroundColor="#131B2E"
+                app:cardCornerRadius="14dp"
+                app:strokeColor="#1E293B"
                 app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="14dp">
+                    android:padding="16dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="⚠️ 5. AI KEYWORD &amp; CONTENT ALERTS"
+                        android:text="⚠️ 5. AI KEYWORD &amp; SAFETY ALERTS"
                         android:textColor="#F59E0B"
-                        android:textSize="14sp"
+                        android:textSize="13sp"
                         android:textStyle="bold" />
 
                     <TextView
@@ -417,9 +524,9 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:background="#0F172A"
+                        android:background="#090D16"
                         android:padding="10dp"
-                        android:text="No sensitive keywords detected yet."
+                        android:text="No flagged keywords detected yet."
                         android:textColor="#CBD5E1"
                         android:textSize="12sp" />
                 </LinearLayout>
@@ -427,7 +534,7 @@
         </LinearLayout>
 
         <!-- ============================================== -->
-        <!-- CHILD CONTAINER (Shown when Role is Child)     -->
+        <!-- CHILD COMPANION VIEW                           -->
         <!-- ============================================== -->
         <LinearLayout
             android:id="@+id/layoutChildDashboard"
@@ -441,21 +548,21 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                app:cardBackgroundColor="#1E293B"
-                app:cardCornerRadius="12dp"
-                app:strokeColor="#334155"
+                app:cardBackgroundColor="#131B2E"
+                app:cardCornerRadius="14dp"
+                app:strokeColor="#1E293B"
                 app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="14dp">
+                    android:padding="16dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="🛡️ CHILD COMPANION STATUS"
+                        android:text="🛡️ PRO COMPANION STATUS"
                         android:textColor="#10B981"
                         android:textSize="14sp"
                         android:textStyle="bold" />
@@ -464,8 +571,8 @@
                         android:id="@+id/txtChildSyncStatus"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:text="● Background Sync: Active (Relaying data every 8s)"
+                        android:layout_marginTop="8dp"
+                        android:text="● Background Shield: Active (Live Telemetry &amp; Commands)"
                         android:textColor="#38BDF8"
                         android:textSize="13sp" />
 
@@ -474,7 +581,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="● GPS Location: Acquiring..."
+                        android:text="● GPS &amp; Geofence Monitoring: Active"
                         android:textColor="#94A3B8"
                         android:textSize="12sp" />
 
@@ -483,7 +590,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="● Screen Time: Calculating..."
+                        android:text="● Screen Time &amp; App Blocker: Active"
                         android:textColor="#94A3B8"
                         android:textSize="12sp" />
                 </LinearLayout>
@@ -494,24 +601,23 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:layout_marginBottom="24dp"
-                app:cardBackgroundColor="#1E293B"
-                app:cardCornerRadius="12dp"
-                app:strokeColor="#334155"
+                app:cardBackgroundColor="#131B2E"
+                app:cardCornerRadius="14dp"
+                app:strokeColor="#1E293B"
                 app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="14dp">
+                    android:padding="16dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="⚙️ REQUIRED PERMISSIONS SETUP"
                         android:textColor="#A855F7"
-                        android:textSize="14sp"
+                        android:textSize="13sp"
                         android:textStyle="bold" />
 
                     <Button
@@ -519,7 +625,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:backgroundTint="#334155"
+                        android:backgroundTint="#1E293B"
                         android:text="1. Grant Notification Access"
                         android:textSize="12sp" />
 
@@ -528,8 +634,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="6dp"
-                        android:backgroundTint="#334155"
-                        android:text="2. Grant Accessibility (Keyword &amp; Lock)"
+                        android:backgroundTint="#1E293B"
+                        android:text="2. Grant Accessibility (App Blocker &amp; AI)"
                         android:textSize="12sp" />
 
                     <Button
@@ -537,8 +643,17 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="6dp"
-                        android:backgroundTint="#334155"
+                        android:backgroundTint="#1E293B"
                         android:text="3. Grant Usage Access (Screen Time)"
+                        android:textSize="12sp" />
+
+                    <Button
+                        android:id="@+id/btnIgnoreBatteryOptimization"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:backgroundTint="#059669"
+                        android:text="4. Whitelist from Battery Killer (24/7 Run)"
                         android:textSize="12sp" />
 
                     <Button
@@ -547,7 +662,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="10dp"
                         android:backgroundTint="#D97706"
-                        android:text="🔊 Test Alarm Sound"
+                        android:text="🔊 Test Siren Sound"
                         android:textSize="12sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>

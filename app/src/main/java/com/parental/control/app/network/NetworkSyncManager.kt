@@ -21,9 +21,9 @@ class NetworkSyncManager(private val context: Context) {
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .writeTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(12, TimeUnit.SECONDS)
+        .readTimeout(12, TimeUnit.SECONDS)
+        .writeTimeout(12, TimeUnit.SECONDS)
         .build()
 
     var onCommandReceived: ((CommandItem) -> Unit)? = null
@@ -46,7 +46,6 @@ class NetworkSyncManager(private val context: Context) {
             cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1)
         }
         prefs.edit().putString("server_url", cleanUrl).apply()
-        // Reconnect WebSocket if needed
         closeWebSocket()
     }
 
@@ -55,6 +54,9 @@ class NetworkSyncManager(private val context: Context) {
     fun syncChildState(
         battery: Int,
         isCharging: Boolean,
+        deviceModel: String = "Android Device",
+        osVersion: String = "Android 14",
+        isFlashlightOn: Boolean = false,
         location: LocationData?,
         screenTimeMinutes: Long,
         topApps: List<AppUsageEntry>,
@@ -65,6 +67,9 @@ class NetworkSyncManager(private val context: Context) {
         val payload = mutableMapOf<String, Any>(
             "battery" to battery,
             "isCharging" to isCharging,
+            "deviceModel" to deviceModel,
+            "osVersion" to osVersion,
+            "isFlashlightOn" to isFlashlightOn,
             "screenTimeMinutes" to screenTimeMinutes,
             "topApps" to topApps
         )
@@ -97,10 +102,21 @@ class NetworkSyncManager(private val context: Context) {
                         try {
                             val parsed = gson.fromJson(respBody, ChildSyncResponse::class.java)
                             val commands = parsed.commands ?: emptyList()
+
+                            // Update dynamic settings from Server
+                            parsed.blockedApps?.let {
+                                SyncHub.dynamicBlockedApps = it.toMutableSet()
+                            }
+                            parsed.monitoredKeywords?.let {
+                                SyncHub.dynamicKeywords = it.toMutableList()
+                            }
+                            parsed.geofence?.let {
+                                SyncHub.activeGeofence = it
+                            }
+
                             mainHandler.post {
                                 onConnectionChanged?.invoke(true)
                                 callback?.invoke(true, commands)
-                                // Trigger any pending commands
                                 commands.forEach { cmd ->
                                     onCommandReceived?.invoke(cmd)
                                 }
@@ -173,7 +189,6 @@ class NetworkSyncManager(private val context: Context) {
 
             override fun onResponse(call: Call, response: Response) {
                 response.use {
-                    val respBody = response.body?.string() ?: ""
                     mainHandler.post {
                         if (response.isSuccessful) {
                             callback(true, "Command $command dispatched successfully")
@@ -182,6 +197,59 @@ class NetworkSyncManager(private val context: Context) {
                         }
                     }
                 }
+            }
+        })
+    }
+
+    // ---------------- PRO GEOFENCE CONFIG ----------------
+
+    fun setGeofence(geofence: GeofenceZone, callback: (Boolean) -> Unit) {
+        val json = gson.toJson(geofence)
+        val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
+        val url = "${getServerUrl()}/api/parent/geofence"
+
+        client.newCall(Request.Builder().url(url).post(body).build()).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                mainHandler.post { callback(false) }
+            }
+            override fun onResponse(call: Call, response: Response) {
+                mainHandler.post { callback(response.isSuccessful) }
+            }
+        })
+    }
+
+    // ---------------- PRO APP BLOCKER TOGGLE ----------------
+
+    fun toggleBlockApp(packageName: String, isBlocked: Boolean, callback: (Boolean) -> Unit) {
+        val payload = mapOf("packageName" to packageName, "isBlocked" to isBlocked)
+        val json = gson.toJson(payload)
+        val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
+        val url = "${getServerUrl()}/api/parent/block-app"
+
+        client.newCall(Request.Builder().url(url).post(body).build()).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                mainHandler.post { callback(false) }
+            }
+            override fun onResponse(call: Call, response: Response) {
+                mainHandler.post { callback(response.isSuccessful) }
+            }
+        })
+    }
+
+    // ---------------- PRO KEYWORD MANAGEMENT ----------------
+
+    fun manageKeyword(keyword: String, action: String, callback: (Boolean) -> Unit) {
+        val payload = mapOf("keyword" to keyword, "action" to action)
+        val json = gson.toJson(payload)
+        val body = json.toRequestBody("application/json; charset=utf-8".toMediaType())
+        val url = "${getServerUrl()}/api/parent/keyword"
+
+        client.newCall(Request.Builder().url(url).post(body).build()).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                mainHandler.post { callback(false) }
+            }
+            override fun onResponse(call: Call, response: Response) {
+                mainHandler.post { callback(response.isSuccessful) }
             }
         })
     }

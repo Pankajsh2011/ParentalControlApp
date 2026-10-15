@@ -30,20 +30,20 @@ class NotificationAlertService : NotificationListenerService() {
 
         Log.d(tag, "[COMMUNICATION EVENT] App: $packageName | Title/Sender: $title | Preview: $text | Time: $timestamp")
 
+        val matchingKeyword = com.parental.control.app.network.SyncHub.dynamicKeywords.firstOrNull { text.contains(it, ignoreCase = true) }
+        val isCritical = matchingKeyword != null
+
         // Push intercepted communication to SyncHub for Parent Dashboard
-        com.parental.control.app.network.SyncHub.onNotificationCaptured(packageName, title, text)
-
-        // Trigger safety check for keywords or alert conditions
-        processIncomingAlert(packageName, title, text)
-    }
-
-    private fun processIncomingAlert(app: String, sender: String, content: String) {
-        val sensitiveKeywords = listOf("urgent", "otp", "code", "bank", "password")
-        val isCritical = sensitiveKeywords.any { content.contains(it, ignoreCase = true) }
+        com.parental.control.app.network.SyncHub.onNotificationCaptured(packageName, title, text, isCritical)
 
         if (isCritical) {
-            Log.w(tag, "Critical alert flagged in communication from app: $app | Content: $content")
-            com.parental.control.app.network.SyncHub.onAlertTriggered("critical_message", "Keyword detected in $app", "Sender: $sender | Content: $content")
+            Log.w(tag, "Critical alert flagged in communication from app: $packageName | Content: $text")
+            com.parental.control.app.network.SyncHub.onAlertTriggered(
+                type = "critical_message",
+                keyword = matchingKeyword!!.uppercase(),
+                content = "From $title ($packageName): \"$text\"",
+                appSource = packageName
+            )
         }
     }
 

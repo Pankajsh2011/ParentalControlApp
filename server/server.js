@@ -10,8 +10,8 @@ const app = express();
 const PORT = process.env.PORT || 5050;
 
 app.use(cors());
-app.use(express.json({ limit: '25mb' }));
-app.use(express.urlencoded({ extended: true, limit: '25mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Static snapshot upload folder
 const uploadDir = path.join(__dirname, 'uploads');
@@ -20,23 +20,46 @@ if (!fs.existsSync(uploadDir)) {
 }
 app.use('/uploads', express.static(uploadDir));
 
-// In-Memory Child Device State
+// In-Memory Pro Child Device State
 let childState = {
     isOnline: false,
     lastSeen: null,
     battery: 100,
     isCharging: false,
+    deviceModel: "Android Device",
+    osVersion: "Android 14",
     location: {
         lat: 28.6139,
         lng: 77.2090,
         accuracy: 10.0,
-        time: new Date().toLocaleTimeString()
+        time: new Date().toLocaleTimeString(),
+        speedKmh: 0
     },
     screenTimeMinutes: 0,
     topApps: [],
     notifications: [],
     alerts: [],
-    snapshots: []
+    snapshots: [],
+    blockedApps: [
+        "com.google.android.youtube",
+        "com.zhiliaoapp.musically",
+        "com.instagram.android",
+        "com.facebook.katana",
+        "com.snapchat.android"
+    ],
+    monitoredKeywords: [
+        "urgent", "otp", "code", "bank", "password",
+        "violence", "gambling", "drugs", "threat", "bully",
+        "meet me", "suicide", "secret", "cheat"
+    ],
+    geofence: {
+        name: "Home Safe Zone",
+        lat: 28.6139,
+        lng: 77.2090,
+        radiusMeters: 300,
+        isEnabled: false
+    },
+    isFlashlightOn: false
 };
 
 // Queue of pending commands for Child
@@ -78,7 +101,7 @@ function broadcastToChild(data) {
 
 // ---------------- REST API ----------------
 
-// Child Sync Endpoint (Child sends latest metrics)
+// Child Sync Endpoint (Child telemetry & updates)
 app.post('/api/child/sync', (req, res) => {
     const body = req.body;
     childState.isOnline = true;
@@ -86,11 +109,16 @@ app.post('/api/child/sync', (req, res) => {
 
     if (body.battery !== undefined) childState.battery = body.battery;
     if (body.isCharging !== undefined) childState.isCharging = body.isCharging;
+    if (body.deviceModel) childState.deviceModel = body.deviceModel;
+    if (body.osVersion) childState.osVersion = body.osVersion;
+    if (body.isFlashlightOn !== undefined) childState.isFlashlightOn = body.isFlashlightOn;
+
     if (body.location) {
         childState.location = {
             lat: body.location.lat,
             lng: body.location.lng,
             accuracy: body.location.accuracy || 10,
+            speedKmh: body.location.speedKmh || 0,
             time: new Date().toLocaleTimeString()
         };
     }
@@ -112,10 +140,16 @@ app.post('/api/child/sync', (req, res) => {
     // Broadcast updated state to all connected parent devices & web dashboard
     broadcastToParents({ type: 'state_update', data: childState });
 
-    // Return any commands waiting for Child
+    // Return pending commands and latest safety configs for Child
     const commandsToSend = [...pendingCommands];
     pendingCommands = [];
-    res.json({ success: true, commands: commandsToSend });
+    res.json({
+        success: true,
+        commands: commandsToSend,
+        blockedApps: childState.blockedApps,
+        monitoredKeywords: childState.monitoredKeywords,
+        geofence: childState.geofence
+    });
 });
 
 // Parent status polling endpoint
@@ -145,11 +179,62 @@ app.post('/api/parent/command', (req, res) => {
     };
 
     pendingCommands.push(cmdObj);
-    // Also push immediately over WebSocket if child is connected
     broadcastToChild({ type: 'command', data: cmdObj });
 
     console.log(`[COMMAND DISPATCHED] -> ${command} (Param: ${param || 'none'})`);
     res.json({ success: true, message: `Command ${command} sent to child.` });
+});
+
+// Pro: Configure Geofence Safe Zone
+app.post('/api/parent/geofence', (req, res) => {
+    const { name, lat, lng, radiusMeters, isEnabled } = req.body;
+    childState.geofence = {
+        name: name || "Home Safe Zone",
+        lat: parseFloat(lat) || childState.location.lat,
+        lng: parseFloat(lng) || childState.location.lng,
+        radiusMeters: parseFloat(radiusMeters) || 300,
+        isEnabled: isEnabled !== undefined ? isEnabled : true
+    };
+    broadcastToParents({ type: 'state_update', data: childState });
+    broadcastToChild({ type: 'geofence_update', data: childState.geofence });
+    res.json({ success: true, geofence: childState.geofence });
+});
+
+// Pro: Toggle Blocked App
+app.post('/api/parent/block-app', (req, res) => {
+    const { packageName, isBlocked } = req.body;
+    if (!packageName) return res.status(400).json({ error: 'packageName required' });
+
+    if (isBlocked) {
+        if (!childState.blockedApps.includes(packageName)) {
+            childState.blockedApps.push(packageName);
+        }
+    } else {
+        childState.blockedApps = childState.blockedApps.filter(p => p !== packageName);
+    }
+
+    broadcastToParents({ type: 'state_update', data: childState });
+    broadcastToChild({ type: 'blocked_apps_update', data: childState.blockedApps });
+    res.json({ success: true, blockedApps: childState.blockedApps });
+});
+
+// Pro: Add or Remove Keyword
+app.post('/api/parent/keyword', (req, res) => {
+    const { keyword, action } = req.body; // action: 'add' | 'remove'
+    if (!keyword) return res.status(400).json({ error: 'keyword required' });
+
+    const cleanKeyword = keyword.trim().toLowerCase();
+    if (action === 'remove') {
+        childState.monitoredKeywords = childState.monitoredKeywords.filter(k => k.toLowerCase() !== cleanKeyword);
+    } else {
+        if (!childState.monitoredKeywords.map(k => k.toLowerCase()).includes(cleanKeyword)) {
+            childState.monitoredKeywords.push(cleanKeyword);
+        }
+    }
+
+    broadcastToParents({ type: 'state_update', data: childState });
+    broadcastToChild({ type: 'keywords_update', data: childState.monitoredKeywords });
+    res.json({ success: true, monitoredKeywords: childState.monitoredKeywords });
 });
 
 // Snapshot Upload (Base64 JPEG/WebP)
@@ -180,7 +265,7 @@ app.post('/api/child/snapshot', (req, res) => {
     }
 });
 
-// Web Dashboard UI
+// ---------------- Pro Web Dashboard UI ----------------
 app.get('/', (req, res) => {
     res.send(`
 <!DOCTYPE html>
@@ -188,43 +273,49 @@ app.get('/', (req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parental Control Live Cloud Hub</title>
+    <title>Parental Control Pro Cloud Hub</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        body { background: #0B1120; color: #F8FAFC; padding: 20px; }
-        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1E293B; padding-bottom: 16px; margin-bottom: 20px; }
-        h1 { font-size: 24px; color: #38BDF8; font-weight: 700; }
+        body { background: #090D16; color: #F1F5F9; padding: 20px; }
+        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1E293B; padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+        h1 { font-size: 22px; color: #38BDF8; font-weight: 700; display: flex; align-items: center; gap: 8px; }
         .badge { padding: 6px 14px; border-radius: 9999px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
         .badge-online { background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid #10B981; }
         .badge-offline { background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid #EF4444; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 20px; }
-        .card { background: #1E293B; border: 1px solid #334155; border-radius: 12px; padding: 18px; }
-        .card h2 { font-size: 16px; margin-bottom: 12px; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em; }
-        .stat-val { font-size: 28px; font-weight: bold; color: #FFFFFF; }
-        .stat-sub { font-size: 13px; color: #64748B; margin-top: 4px; }
-        #map { height: 260px; width: 100%; border-radius: 8px; margin-top: 10px; z-index: 1; }
-        .btn-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
-        button { background: #2563EB; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 13px; }
+        .card { background: #131B2E; border: 1px solid #1E293B; border-radius: 14px; padding: 18px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .card h2 { font-size: 14px; margin-bottom: 12px; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px; }
+        .stat-val { font-size: 24px; font-weight: bold; color: #FFFFFF; }
+        .stat-sub { font-size: 12px; color: #64748B; margin-top: 4px; }
+        #map { height: 300px; width: 100%; border-radius: 10px; margin-top: 12px; z-index: 1; border: 1px solid #334155; }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        button { background: #2563EB; color: white; border: none; padding: 9px 15px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
         button:hover { background: #1D4ED8; }
         button.danger { background: #DC2626; }
         button.danger:hover { background: #B91C1C; }
         button.warning { background: #D97706; }
         button.warning:hover { background: #B45309; }
-        .log-box { max-height: 200px; overflow-y: auto; background: #0F172A; border-radius: 8px; padding: 10px; font-size: 12px; color: #CBD5E1; }
-        .log-item { padding: 6px 0; border-bottom: 1px solid #1E293B; }
+        button.secondary { background: #334155; color: #E2E8F0; }
+        button.secondary:hover { background: #475569; }
+        .log-box { max-height: 220px; overflow-y: auto; background: #0B1120; border-radius: 8px; padding: 10px; font-size: 12px; color: #CBD5E1; border: 1px solid #1E293B; }
+        .log-item { padding: 8px 0; border-bottom: 1px solid #1E293B; }
         .log-item:last-child { border-bottom: none; }
-        .tag-keyword { background: #EF4444; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .tag-keyword { background: #EF4444; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; }
+        .tag-pill { background: #1E293B; color: #94A3B8; border: 1px solid #334155; padding: 3px 8px; border-radius: 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; margin: 3px; }
+        .tag-pill.active { background: rgba(239, 68, 68, 0.2); border-color: #EF4444; color: #EF4444; }
+        .input-inline { background: #0B1120; border: 1px solid #334155; color: #FFFFFF; padding: 7px 10px; border-radius: 6px; font-size: 12px; }
     </style>
 </head>
 <body>
     <header>
         <div>
-            <h1>🛡️ Parental Control Relay Hub</h1>
-            <p style="color: #94A3B8; font-size: 13px; margin-top: 4px;">Live Synchronization between Parent &amp; Child Devices</p>
+            <h1>🛡️ Parental Control Pro Hub</h1>
+            <p style="color: #94A3B8; font-size: 12px; margin-top: 4px;">Real-Time 6-Module Monitoring &amp; Child Protection System</p>
         </div>
-        <div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div id="deviceInfo" style="font-size: 12px; color: #64748B;">Device: Connecting...</div>
             <span id="childBadge" class="badge badge-offline">● Child Device Offline</span>
         </div>
     </header>
@@ -232,24 +323,27 @@ app.get('/', (req, res) => {
     <div class="grid">
         <!-- Live GPS Map Card -->
         <div class="card" style="grid-column: span 2;">
-            <h2>📍 Live GPS Tracking &amp; Geofence</h2>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>📍 Live GPS Tracking &amp; Geofencing Safe Zone</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <div>
-                    <div id="gpsCoords" class="stat-val" style="font-size: 20px;">Latitude: --, Longitude: --</div>
-                    <div id="gpsTime" class="stat-sub">Awaiting GPS signal from child phone...</div>
+                    <div id="gpsCoords" class="stat-val" style="font-size: 18px;">Latitude: --, Longitude: --</div>
+                    <div id="gpsTime" class="stat-sub">Speed: 0 km/h | Accuracy: --m | Time: --</div>
                 </div>
-                <button onclick="openGoogleMaps()">Open in Google Maps</button>
+                <div class="btn-group" style="margin-top: 0;">
+                    <button class="secondary" onclick="openGoogleMaps()">📍 Google Maps</button>
+                    <button onclick="setSafeZoneHere()">🎯 Set Safe Zone Here</button>
+                </div>
             </div>
             <div id="map"></div>
         </div>
 
-        <!-- Telemetry & Screen Time -->
+        <!-- Telemetry & Instant Remote Actions -->
         <div class="card">
-            <h2>🔋 Device Battery &amp; Screen Time</h2>
-            <div style="display: flex; gap: 24px; margin-top: 10px;">
+            <h2>🔋 Device Health &amp; Screen Time</h2>
+            <div style="display: flex; justify-content: space-between; margin-top: 8px;">
                 <div>
                     <div id="batteryVal" class="stat-val">--%</div>
-                    <div id="chargingVal" class="stat-sub">Battery Level</div>
+                    <div id="chargingVal" class="stat-sub">Battery Status</div>
                 </div>
                 <div>
                     <div id="screenTimeVal" class="stat-val">--m</div>
@@ -257,37 +351,64 @@ app.get('/', (req, res) => {
                 </div>
             </div>
 
-            <h2 style="margin-top: 20px;">⚡ Instant Remote Actions</h2>
+            <h2 style="margin-top: 20px;">⚡ Pro Remote Control Actions</h2>
             <div class="btn-group">
-                <button class="warning" onclick="sendCommand('RING_ALARM')">🔔 Ring Loud Alarm</button>
-                <button class="danger" onclick="sendCommand('LOCK_DEVICE')">🔒 Lock Child Phone</button>
-                <button onclick="sendCommand('TAKE_SNAPSHOT')">📸 Request Snapshot</button>
+                <button class="warning" onclick="sendCommand('RING_ALARM')">🔔 Ring Siren</button>
+                <button class="secondary" onclick="sendCommand('STOP_ALARM')">🛑 Stop Alarm</button>
+                <button class="danger" onclick="sendCommand('LOCK_DEVICE')">🔒 Lock Phone</button>
+                <button onclick="sendCommand('TAKE_SNAPSHOT')">📸 Screen Snap</button>
+                <button class="secondary" onclick="sendCommand('TOGGLE_FLASHLIGHT')">🔦 Flashlight</button>
             </div>
         </div>
     </div>
 
     <div class="grid">
-        <!-- Notifications & Communication Monitor -->
+        <!-- Feature 6: Dynamic App Blocker -->
         <div class="card">
-            <h2>💬 Communication &amp; Messages (Feature 3)</h2>
+            <h2>🚫 Restricted App Blocker (Feature 6)</h2>
+            <p style="font-size: 12px; color: #94A3B8; margin-bottom: 10px;">Apps blocked on child's phone in real-time:</p>
+            <div id="blockedAppsContainer" style="margin-bottom: 12px;"></div>
+            <div style="display: flex; gap: 8px;">
+                <input id="inputAppPackage" class="input-inline" style="flex: 1;" placeholder="e.g. com.google.android.youtube" />
+                <button onclick="addBlockedApp()">+ Block App</button>
+            </div>
+        </div>
+
+        <!-- Feature 5: Monitored Keywords -->
+        <div class="card">
+            <h2>⚠️ Monitored Safety Keywords (Feature 5)</h2>
+            <p style="font-size: 12px; color: #94A3B8; margin-bottom: 10px;">Alerts triggered when typed or viewed on screen:</p>
+            <div id="keywordsContainer" style="margin-bottom: 12px;"></div>
+            <div style="display: flex; gap: 8px;">
+                <input id="inputKeyword" class="input-inline" style="flex: 1;" placeholder="e.g. cheat, weapons, drugs" />
+                <button onclick="addKeyword()">+ Add Keyword</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <!-- Feature 3: Communication Monitor -->
+        <div class="card">
+            <h2>💬 Communication &amp; SMS Monitor (Feature 3)</h2>
             <div id="notifList" class="log-box">
                 <div class="log-item" style="color: #64748B;">No intercepted messages yet...</div>
             </div>
         </div>
 
-        <!-- AI Content & Keyword Alerts -->
+        <!-- Flagged AI Alerts -->
         <div class="card">
-            <h2>⚠️ AI Content &amp; Keyword Alerts (Feature 5)</h2>
+            <h2>🚨 Real-Time Security Alerts</h2>
             <div id="alertList" class="log-box">
-                <div class="log-item" style="color: #64748B;">No flagged content detected yet...</div>
+                <div class="log-item" style="color: #64748B;">No flagged activity detected yet...</div>
             </div>
         </div>
     </div>
 
     <script>
-        let map = L.map('map').setView([28.6139, 77.2090], 13);
+        let map = L.map('map').setView([28.6139, 77.2090], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
         let marker = L.marker([28.6139, 77.2090]).addTo(map).bindPopup("Child Device Location");
+        let geofenceCircle = null;
 
         let currentLat = 28.6139, currentLng = 77.2090;
 
@@ -295,19 +416,37 @@ app.get('/', (req, res) => {
             const badge = document.getElementById('childBadge');
             if (data.isOnline) {
                 badge.className = 'badge badge-online';
-                badge.innerHTML = '● Child Device Online (Live Sync)';
+                badge.innerHTML = '● Child Device Online';
             } else {
                 badge.className = 'badge badge-offline';
                 badge.innerHTML = '● Child Device Offline';
+            }
+
+            if (data.deviceModel) {
+                document.getElementById('deviceInfo').innerText = data.deviceModel + ' | ' + (data.osVersion || 'Android');
             }
 
             if (data.location && data.location.lat) {
                 currentLat = data.location.lat;
                 currentLng = data.location.lng;
                 document.getElementById('gpsCoords').innerText = 'Lat: ' + currentLat.toFixed(5) + ' | Lng: ' + currentLng.toFixed(5);
-                document.getElementById('gpsTime').innerText = 'Accuracy: ' + (data.location.accuracy || 10) + 'm | Updated: ' + data.location.time;
+                document.getElementById('gpsTime').innerText = 'Speed: ' + (data.location.speedKmh || 0).toFixed(0) + ' km/h | Accuracy: ' + (data.location.accuracy || 10).toFixed(0) + 'm | ' + data.location.time;
                 marker.setLatLng([currentLat, currentLng]);
-                map.panTo([currentLat, currentLng]);
+            }
+
+            // Geofence Circle
+            if (data.geofence && data.geofence.isEnabled) {
+                if (!geofenceCircle) {
+                    geofenceCircle = L.circle([data.geofence.lat, data.geofence.lng], {
+                        radius: data.geofence.radiusMeters || 300,
+                        color: '#10B981',
+                        fillColor: '#10B981',
+                        fillOpacity: 0.15
+                    }).addTo(map);
+                } else {
+                    geofenceCircle.setLatLng([data.geofence.lat, data.geofence.lng]);
+                    geofenceCircle.setRadius(data.geofence.radiusMeters || 300);
+                }
             }
 
             document.getElementById('batteryVal').innerText = data.battery ? data.battery + '%' : '--%';
@@ -316,6 +455,26 @@ app.get('/', (req, res) => {
             const hrs = Math.floor(data.screenTimeMinutes / 60);
             const mins = data.screenTimeMinutes % 60;
             document.getElementById('screenTimeVal').innerText = hrs > 0 ? hrs + 'h ' + mins + 'm' : mins + 'm';
+
+            // Blocked Apps
+            if (data.blockedApps) {
+                document.getElementById('blockedAppsContainer').innerHTML = data.blockedApps.map(p => \`
+                    <span class="tag-pill active">
+                        🚫 \${p.split('.').pop()}
+                        <a href="javascript:removeBlockedApp('\${p}')" style="color: #EF4444; font-weight: bold; margin-left: 4px; text-decoration: none;">&times;</a>
+                    </span>
+                \`).join('');
+            }
+
+            // Monitored Keywords
+            if (data.monitoredKeywords) {
+                document.getElementById('keywordsContainer').innerHTML = data.monitoredKeywords.map(k => \`
+                    <span class="tag-pill">
+                        \${k}
+                        <a href="javascript:removeKeyword('\${k}')" style="color: #94A3B8; font-weight: bold; margin-left: 4px; text-decoration: none;">&times;</a>
+                    </span>
+                \`).join('');
+            }
 
             // Notifications
             if (data.notifications && data.notifications.length > 0) {
@@ -327,7 +486,7 @@ app.get('/', (req, res) => {
                 document.getElementById('notifList').innerHTML = html;
             }
 
-            // Keyword Alerts
+            // Security Alerts
             if (data.alerts && data.alerts.length > 0) {
                 const html = data.alerts.map(a => \`
                     <div class="log-item">
@@ -342,6 +501,19 @@ app.get('/', (req, res) => {
             window.open('https://maps.google.com/?q=' + currentLat + ',' + currentLng, '_blank');
         }
 
+        async function setSafeZoneHere() {
+            try {
+                await fetch('/api/parent/geofence', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: 'Safe Zone', lat: currentLat, lng: currentLng, radiusMeters: 300, isEnabled: true })
+                });
+                alert('Safe Zone set at current child position (Radius: 300m)!');
+            } catch(e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
         async function sendCommand(cmd) {
             try {
                 const res = await fetch('/api/parent/command', {
@@ -350,32 +522,68 @@ app.get('/', (req, res) => {
                     body: JSON.stringify({ command: cmd })
                 });
                 const data = await res.json();
-                alert(data.message || 'Command sent!');
+                alert(data.message || 'Command dispatched!');
             } catch(e) {
-                alert('Error sending command: ' + e.message);
+                alert('Error: ' + e.message);
             }
         }
 
-        // Live WebSocket or Polling
+        async function addBlockedApp() {
+            const input = document.getElementById('inputAppPackage');
+            const pkg = input.value.trim();
+            if (!pkg) return;
+            await fetch('/api/parent/block-app', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ packageName: pkg, isBlocked: true })
+            });
+            input.value = '';
+        }
+
+        async function removeBlockedApp(pkg) {
+            await fetch('/api/parent/block-app', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ packageName: pkg, isBlocked: false })
+            });
+        }
+
+        async function addKeyword() {
+            const input = document.getElementById('inputKeyword');
+            const kw = input.value.trim();
+            if (!kw) return;
+            await fetch('/api/parent/keyword', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ keyword: kw, action: 'add' })
+            });
+            input.value = '';
+        }
+
+        async function removeKeyword(kw) {
+            await fetch('/api/parent/keyword', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ keyword: kw, action: 'remove' })
+            });
+        }
+
+        // Live WebSocket
         const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const ws = new WebSocket(proto + '//' + window.location.host + '/ws?role=parent');
         ws.onmessage = (event) => {
             try {
                 const msg = JSON.parse(event.data);
-                if (msg.type === 'state_update') {
-                    updateUI(msg.data);
-                }
+                if (msg.type === 'state_update') updateUI(msg.data);
             } catch(e) {}
         };
 
-        // Fallback polling every 3 seconds
+        // Polling fallback every 3s
         setInterval(async () => {
             try {
                 const res = await fetch('/api/parent/status');
                 const json = await res.json();
-                if (json.success && json.data) {
-                    updateUI(json.data);
-                }
+                if (json.success && json.data) updateUI(json.data);
             } catch(e) {}
         }, 3000);
     </script>
@@ -395,7 +603,6 @@ wss.on('connection', (ws, req) => {
 
     console.log(`[WS CONNECTED] Client connected as role: ${role}`);
 
-    // If parent connects, send initial state
     if (role === 'parent') {
         ws.send(JSON.stringify({ type: 'state_update', data: childState }));
     } else if (role === 'child') {
@@ -411,7 +618,6 @@ wss.on('connection', (ws, req) => {
                 childState.isOnline = true;
                 childState.lastSeen = Date.now();
 
-                // WebRTC or Telemetry message from child
                 if (parsed.type === 'telemetry') {
                     Object.assign(childState, parsed.data);
                     broadcastToParents({ type: 'state_update', data: childState });
@@ -419,7 +625,6 @@ wss.on('connection', (ws, req) => {
                     broadcastToParents(parsed);
                 }
             } else if (role === 'parent') {
-                // Command or WebRTC offer from parent
                 if (parsed.type === 'command') {
                     broadcastToChild(parsed);
                 } else if (parsed.type === 'webrtc_offer' || parsed.type === 'webrtc_ice') {
@@ -446,15 +651,12 @@ wss.on('connection', (ws, req) => {
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log('\n======================================================');
-    console.log('🚀 PARENTAL CONTROL RELAY & SIGNALING SERVER RUNNING');
+    console.log('🚀 PARENTAL CONTROL PRO RELAY & SIGNALING SERVER RUNNING');
     console.log('======================================================');
     console.log(`Port: ${PORT}`);
-    console.log('Local Network Access URLs (Enter this in Child & Parent Apps):');
     const ips = getLocalIpAddresses();
     ips.forEach(ip => {
         console.log(`👉 http://${ip.address}:${PORT}  (${ip.name})`);
     });
-    console.log('Local Machine Dashboard:');
-    console.log(`👉 http://localhost:${PORT}`);
     console.log('======================================================\n');
 });

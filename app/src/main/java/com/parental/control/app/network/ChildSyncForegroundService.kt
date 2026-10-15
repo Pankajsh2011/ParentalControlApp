@@ -7,6 +7,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.hardware.camera2.CameraManager
 import android.media.AudioAttributes
 import android.media.Ringtone
 import android.media.RingtoneManager
@@ -33,7 +34,7 @@ class ChildSyncForegroundService : Service() {
         override fun run() {
             if (!isRunning) return
             performSync()
-            handler.postDelayed(this, 8000) // Sync every 8 seconds
+            handler.postDelayed(this, 7000) // Sync every 7 seconds
         }
     }
 
@@ -61,7 +62,7 @@ class ChildSyncForegroundService : Service() {
 
         isRunning = true
         handler.post(syncRunnable)
-        Log.d(tag, "Child Sync Foreground Service launched.")
+        Log.d(tag, "Pro Child Sync Foreground Service launched.")
     }
 
     private fun createNotificationChannel() {
@@ -103,12 +104,22 @@ class ChildSyncForegroundService : Service() {
         // 2. Location
         val location = SyncHub.latestLocation
 
-        // 3. Screen time
-        val screenTimeMinutes = try {
-            screenTimeManager.getTotalDailyScreenTimeMinutes()
+        // 3. Screen time and top apps
+        val topAppsList = try {
+            screenTimeManager.getDailyAppUsage().take(6).map {
+                val appLabel = it.packageName.split(".").lastOrNull()?.replaceFirstChar { c -> c.uppercase() } ?: it.packageName
+                AppUsageEntry(
+                    name = appLabel,
+                    packageName = it.packageName,
+                    minutes = it.totalTimeMinutes,
+                    isBlocked = SyncHub.dynamicBlockedApps.contains(it.packageName)
+                )
+            }
         } catch (e: Exception) {
-            0L
+            emptyList()
         }
+
+        val screenTimeMinutes = topAppsList.sumOf { it.minutes }
 
         // 4. Pending notification or alert
         val notification = SyncHub.pendingNotification
@@ -117,40 +128,58 @@ class ChildSyncForegroundService : Service() {
         val alert = SyncHub.pendingAlert
         SyncHub.pendingAlert = null
 
+        // Device Specs
+        val deviceModel = "${Build.MANUFACTURER.uppercase()} ${Build.MODEL}"
+        val osVersion = "Android ${Build.VERSION.RELEASE}"
+
         // 5. Send to Server
         syncManager.syncChildState(
             battery = batteryPercent,
             isCharging = isCharging,
+            deviceModel = deviceModel,
+            osVersion = osVersion,
+            isFlashlightOn = SyncHub.isFlashlightActive,
             location = location,
             screenTimeMinutes = screenTimeMinutes,
-            topApps = emptyList(),
+            topApps = topAppsList,
             newNotification = notification,
             newAlert = alert,
             callback = { success, commands ->
                 if (success) {
-                    Log.d(tag, "Child telemetry synced successfully. Commands: ${commands.size}")
+                    Log.d(tag, "Child telemetry synced. Commands pending: ${commands.size}")
                 }
             }
         )
     }
 
     private fun handleRemoteCommand(cmd: CommandItem) {
-        Log.i(tag, "EXECUTING REMOTE COMMAND: ${cmd.command}")
+        Log.i(tag, "EXECUTING PRO REMOTE COMMAND: ${cmd.command}")
         when (cmd.command.uppercase()) {
-            "RING_ALARM" -> {
-                playLoudAlarm()
-            }
-            "STOP_ALARM" -> {
-                stopAlarm()
-            }
-            "LOCK_DEVICE" -> {
-                lockChildDevice()
-            }
-            "TAKE_SNAPSHOT" -> {
-                requestSnapshot()
-            }
-            else -> {
-                Log.d(tag, "Unknown command: ${cmd.command}")
+            "RING_ALARM" -> playLoudAlarm()
+            "STOP_ALARM" -> stopAlarm()
+            "LOCK_DEVICE" -> lockChildDevice()
+            "TAKE_SNAPSHOT" -> requestSnapshot()
+            "TOGGLE_FLASHLIGHT" -> toggleFlashlight()
+            "FLASHLIGHT_ON" -> setFlashlight(true)
+            "FLASHLIGHT_OFF" -> setFlashlight(false)
+            else -> Log.d(tag, "Unknown command: ${cmd.command}")
+        }
+    }
+
+    private fun toggleFlashlight() {
+        setFlashlight(!SyncHub.isFlashlightActive)
+    }
+
+    private fun setFlashlight(enable: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+                val cameraId = cameraManager.cameraIdList.firstOrNull() ?: return
+                cameraManager.setTorchMode(cameraId, enable)
+                SyncHub.isFlashlightActive = enable
+                Log.d(tag, "Flashlight state set to: $enable")
+            } catch (e: Exception) {
+                Log.e(tag, "Failed to toggle flashlight: ${e.message}")
             }
         }
     }
@@ -181,15 +210,15 @@ class ChildSyncForegroundService : Service() {
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 500, 200, 500, 200, 500), -1))
+                vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 600, 250, 600, 250, 600), -1))
             } else {
                 @Suppress("DEPRECATION")
-                vibrator.vibrate(2000)
+                vibrator.vibrate(3000)
             }
 
-            // Stop alarm after 15 seconds
-            handler.postDelayed({ stopAlarm() }, 15000)
-            Toast.makeText(this, "⚠️ Parental Loud Alarm Triggered!", Toast.LENGTH_LONG).show()
+            // Auto stop alarm after 20 seconds
+            handler.postDelayed({ stopAlarm() }, 20000)
+            Toast.makeText(this, "⚠️ Parental Loud Siren Active!", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
             Log.e(tag, "Error triggering alarm: ${e.message}")
         }
@@ -203,7 +232,6 @@ class ChildSyncForegroundService : Service() {
     }
 
     private fun lockChildDevice() {
-        // Send user to Home screen and display parental alert
         val homeIntent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_HOME)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -213,7 +241,6 @@ class ChildSyncForegroundService : Service() {
     }
 
     private fun requestSnapshot() {
-        // Upload most recent saved snapshot if available
         val snapshotsDir = File(filesDir, "snapshots")
         val latest = snapshotsDir.listFiles()?.maxByOrNull { it.lastModified() }
         if (latest != null && latest.exists()) {
@@ -229,6 +256,7 @@ class ChildSyncForegroundService : Service() {
         handler.removeCallbacks(syncRunnable)
         syncManager.closeWebSocket()
         stopAlarm()
+        setFlashlight(false)
         try {
             if (wakeLock?.isHeld == true) wakeLock?.release()
         } catch (e: Exception) {}
